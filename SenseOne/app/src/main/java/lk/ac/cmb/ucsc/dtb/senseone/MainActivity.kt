@@ -56,7 +56,8 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 SensorViewer(viewModel) // Root composable
 
-                //without mutable state variable Dialog does not seem to launch
+                //Without mutable state variable and back handler
+                // Dialog does not seem to launch i.e.:onBackPressed
                 var showDialog by remember { mutableStateOf(false) }
 
                 // Handle back press
@@ -106,7 +107,8 @@ fun ConfirmDialog(
 @Composable
 fun SensorViewer(viewModel: MainViewModel) {
     Log.d(TAG, "SensorViewer(.)")
-    var selectedSensor by remember { mutableStateOf<SensorInfo?>(null) } // Refers the currently selected sensor
+    // Refers the currently selected sensor
+    var selectedSensor by remember { mutableStateOf<SensorInfo?>(null) }
 
     if (selectedSensor == null) {
         // Show list of sensors
