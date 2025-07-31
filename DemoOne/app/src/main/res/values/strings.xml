@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">DemoOne</string>
+    <string name="run_coroutine_task">Run Coroutine Task</string>
+    <string name="run_foreground_service_task">Run Foreground Service Task</string>
+    <string name="blocking_delay">Call Blocking Delay</string>
+    <string name="starting_coroutine">Starting coroutine...</string>
+    <string name="coroutine_task_complete">Coroutine task complete!</string>
+    <string name="shows_ui_blocking">Shows UI Blocking</string>
+    <string name="app_heading">Demo One - Coroutines and Service Concepts</string>
+    <string name="call_to_service">Call the Service</string>
+</resources>
