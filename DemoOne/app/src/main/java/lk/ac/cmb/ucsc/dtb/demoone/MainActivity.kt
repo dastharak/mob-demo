@@ -125,15 +125,10 @@ class MainActivity : Activity() {
     // of the Button in the layout definition
     fun getTimeFromService(view: View) {
         //This view is an instance of the Button
-        view.setOnClickListener {
-            if (isBound) {
-                val time = boundService?.getCurrentTimestamp()
-                Toast.makeText(this, "Timestamp: $time", Toast.LENGTH_SHORT).show()
-            }
+        if (isBound) {
+            val time = boundService?.getCurrentTimestamp()
+            Toast.makeText(this, "Timestamp: $time", Toast.LENGTH_SHORT).show()
         }
-
-
     }
-
 
 }
