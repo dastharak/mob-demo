@@ -7,5 +7,6 @@
 | AirPlaneModeBCast        | Listen to system broadcasts              |
 | SenseOne                 | List the sensors via Sensor Framework    |
 | DemoOne                  | Service Types and Coroutines demo        |
+| PersistenceFLT           | Flutter Sample for persistence demo      |
 
 ### Android Studio Version - 2024.2.1 - Ladybug
