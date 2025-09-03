@@ -18,6 +18,7 @@ object NotificationUtils {
             CHANNEL_NAME,
             NotificationManager.IMPORTANCE_DEFAULT
         )
+        //Another manager to take care of Notifications business
         val manager = context.getSystemService(NotificationManager::class.java)
         manager?.createNotificationChannel(serviceChannel)
     }
