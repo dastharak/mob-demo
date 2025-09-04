@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:developer' as dev;
 import 'sqlite.dart' as db;
+import 'package:hive_flutter/hive_flutter.dart';
 
-// Entry point of the Flutter app
 void main() => runApp(const MyApp());
 
 // Root widget of the app
@@ -13,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      title: 'Persistence Demo', // Top bar and runtime name
+      title: 'Persistence', // Runtime name
       home: MyHomePage(), // Main screen of the app
     );
   }
@@ -21,7 +20,7 @@ class MyApp extends StatelessWidget {
 
 /*
 // Screen of the app is a StatefulWidget:
-// Acts as a factory for the State object
+// Acts as a container and a factory for the State object
 // and doesn’t directly handle UI rendering.
 //
 // UI making is delegated to the State class’s build method.
@@ -35,15 +34,24 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+//Enum makes it easier to handle the need
+// rather than defining constants
+enum DataSource {
+  sharedprefs(0, "SharedPrefs"),
+  sqlite(1, "SQLite DB"),
+  hive(2, "In Memory"),
+  firebase(2, "FireBase");
+
+  final int num;
+  final String str;
+  const DataSource(this.num, this.str);
+}
+
 // The "State" holds mutable data
 class _MyHomePageState extends State<MyHomePage> {
   int _count = 0; // count variable
-  static const Map<int, String> _dataSrcs = {
-    0: "Prefs",
-    1: "SQLite",
-    2: "Memory"
-  };
   int _dataSource = 0; // Default data source
+
   // Called when widget is created (before UI build)
   @override
   void initState() {
@@ -54,6 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _loadCounter(_dataSource);
   }
 
+  //Some callbacks from State class, not required to implement
   // Called when the parent widget is rebuilt with new configuration
   @override
   void didUpdateWidget(covariant MyHomePage oldWidget) {
@@ -68,35 +77,46 @@ class _MyHomePageState extends State<MyHomePage> {
     print('dispose()');
   }
 
-  // Load saved counter value from SharedPreferences
+  // Load config value from SharedPreferences
   Future<void> _loadConfig() async {
     final prefs = await SharedPreferences.getInstance();
     int? i = prefs.getInt('data_source');
-    if (i != null && _dataSrcs.containsKey(i)) {
+    if (i != null && -1 < i && i < DataSource.values.length) {
       _dataSource = i;
     } else {
       _dataSource = 0; //default source
     }
   }
 
-  // Load saved counter value from SharedPreferences
   Future<void> _loadCounter(int ii) async {
     if (ii == 0) {
-      final prefs = await SharedPreferences
-          .getInstance(); // Load stored counter value from local storage
+      // Load stored count from Shared Prefs
+      final prefs = await SharedPreferences.getInstance();
       int? c = prefs.getInt('counter');
       print("Shared Prefs Loaded : $c");
       _count = c ?? 0;
       setState(() => _count);
     } else if (ii == 1) {
-      final c = await db.CounterDB.getCounter();
+      int c = await db.CounterDB.getCounter();
       print("SQLite DB Loaded : $c");
       _count = c;
       setState(() => _count);
+    } else if (ii == 2) {
+      WidgetsFlutterBinding.ensureInitialized();
+      await Hive.initFlutter();
+      final box = await Hive.openBox<int>('counterHV');
+      int? c = box.get('counterHV', defaultValue: 0);
+      _count = c ?? 0;
+      setState(() => _count);
+    } else if (ii == 3) {
+      // Read from Firebase
+      //TODO
+    } else {
+      print('Warn:Must not reach 1!');
     }
   }
 
-  // Increase counter and save it to SharedPreferences
+  // Increase count and save it to SharedPreferences
   Future<void> _incrementCounter() async {
     setState(() => _count++); // Update UI
     if (_dataSource == 0) {
@@ -106,6 +126,17 @@ class _MyHomePageState extends State<MyHomePage> {
     } else if (_dataSource == 1) {
       print("SQLite DB Updating to $_count");
       await db.CounterDB.updateCounter(_count);
+    } else if (_dataSource == 2) {
+      print("Hive DB Updating to $_count");
+      WidgetsFlutterBinding.ensureInitialized();
+      // Initialize Hive for Flutter, setting up the storage directory
+      await Hive.initFlutter();
+      final box = await Hive.openBox<int>('counterHV');
+      box.put('counter', _count);
+    } else if (_dataSource == 3) {
+      //TODO
+    } else {
+      print('Warn:Must not reach 2!');
     }
   }
 
@@ -114,6 +145,7 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _dataSource = int.parse(newSource);
     });
+    // a temporary message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text("Data source changed to $_dataSource")),
     );
@@ -124,16 +156,25 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Persistence Demo'), // Title on app bar
+        title: const Text('Persistence Types'), // Title on app bar
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           // Popup menu button in AppBar
           PopupMenuButton<String>(
             onSelected: _changeDataSource,
             itemBuilder: (context) => [
-              const PopupMenuItem(value: "0", child: Text("Shared Prefs")),
-              const PopupMenuItem(value: "1", child: Text("Local DB")),
-              const PopupMenuItem(value: "2", child: Text("In-Memory")),
+              PopupMenuItem(
+                  value: DataSource.sharedprefs.num.toString(),
+                  child: Text(DataSource.sharedprefs.str)),
+              PopupMenuItem(
+                  value: DataSource.sqlite.num.toString(),
+                  child: Text(DataSource.sqlite.str)),
+              PopupMenuItem(
+                  value: DataSource.hive.num.toString(),
+                  child: Text(DataSource.hive.str)),
+              PopupMenuItem(
+                  value: DataSource.firebase.num.toString(),
+                  child: Text(DataSource.firebase.str)),
             ],
           )
         ],
@@ -145,16 +186,16 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             const Text('You have pushed the button '),
             Text(
-              '$_count', // Show counter value
+              '$_count', // Show count value
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const Text(' times.'),
           ],
         ),
       ),
-      // Floating button to increment counter
+      // Floating button to increment count
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter, // Increase + save counter
+        onPressed: _incrementCounter, // Increase and save count
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),
