@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Intents</string>
+    <string name="second_activity_label">This is the Second Activity</string>
+</resources>
