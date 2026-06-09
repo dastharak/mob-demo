@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Life Cycle</string>
     <string name="second_activity_label">This is the Second Activity</string>
+    <string name="second_activity_finish">Finish Second Activity</string>
 </resources>

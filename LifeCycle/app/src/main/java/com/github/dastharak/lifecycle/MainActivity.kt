@@ -1,16 +1,17 @@
 package com.github.dastharak.lifecycle
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat.startActivityForResult
 import com.github.dastharak.lifecycle.ui.theme.LifeCycleTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -48,7 +50,7 @@ class MainActivity :  ComponentActivity() {
             LifeCycleTheme {
                 //  context from the environment provider
                 val context = LocalContext.current
-                CallbackLogScreen(cvm,context)
+                CallbackLogScreen(cvm,context,this)
             }
         }
         cvm.addCallbackLog("onCreate(${savedInstanceState})")
@@ -98,10 +100,21 @@ class MainActivity :  ComponentActivity() {
         super.onNewIntent(intent)
         cvm.addCallbackLog("onNewIntent(Intent)")
     }
+
+    @Deprecated(message = "TODO upgrade later")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(resultCode == RESULT_OK){
+            Log.d(tag2,"Success")
+            val r1 = data?.getStringExtra("key1")
+            val r2 = data?.getDoubleExtra("key2",-1.0)
+            Toast.makeText(this,"Results: r1:$r1\nr2:$r2\n",Toast.LENGTH_LONG).show()
+        }
+    }
 }
 
 @Composable
-fun CallbackLogScreen(viewModel: CallbackViewModel,context:Context) {
+fun CallbackLogScreen(viewModel: CallbackViewModel,context:Context,m: Activity?) {
     // Collect updates reactively
     val logs by viewModel.logs.collectAsState()
     Column(modifier = Modifier.fillMaxSize()) {
@@ -143,9 +156,16 @@ fun CallbackLogScreen(viewModel: CallbackViewModel,context:Context) {
             }, modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
                 Text("Jump To Second")
             }
+
+            Button(onClick = {
+                val i = Intent(context, SecondActivity::class.java)
+                //TODO this call to be updated with recent APIs
+                if (m !=null)
+                    startActivityForResult(m,i,7,null)
+            }, modifier = Modifier.align(alignment = Alignment.CenterHorizontally)) {
+                Text("Start Second for Result")
+            }
         }
-
-
     }
 }
 
@@ -155,6 +175,6 @@ fun PreviewScreen(){
     LifeCycleTheme {
         val cvm = CallbackViewModel()
         val ctx = LocalContext.current
-        CallbackLogScreen(cvm, ctx)
+        CallbackLogScreen(cvm, ctx,null)
     }
 }
