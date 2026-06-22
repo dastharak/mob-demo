@@ -28,7 +28,7 @@ import lk.ac.cmb.ucsc.dtb.apmbcr.vm.MainViewModel
 
 class MainActivity : ComponentActivity() {
 
-    val TAG = MainActivity::class.java.name//"MainActivity"
+    private val tag = MainActivity::class.java.name//"MainActivity"
     // Create a ViewModel scoped to this activity
     private lateinit var viewModel: MainViewModel
 
@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG,"onCreate(.)")
-        // Initialize the ViewModel
+        Log.d(tag,"onCreate(.)")
+        // Initialize the ViewModel : Provider maintains the instance of the VM
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
         /*enableEdgeToEdge()*/ // : leaving the control and notification area alone
         setContent {
@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG,"onResume()")
+        Log.d(tag,"onResume()")
         //get current APM
         viewModel.refreshAirplaneMode()
         //register the BCReceiver for APMC
@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG,"onPause()")
+        Log.d(tag,"onPause()")
         //un register the BCReceiver for APMC
         unregisterReceiver(receiver)
     }
