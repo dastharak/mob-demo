@@ -2,8 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'sqlite.dart' as db;
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'firebase_options.dart';
 
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // If running on Android, Firebase reads google-services.json automatically
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+    print("Firebase init non-web");
+  } else {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print("Firebase init web");
+  }
+  runApp(const MyApp());
+}
 
 // Root widget of the app
 class MyApp extends StatelessWidget {
@@ -32,15 +50,16 @@ class MyHomePage extends StatefulWidget {
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
+  //createState is a method from State class that we override
 }
 
-//Enum makes it easier to handle the need
+// Enum makes it easier to handle the need
 // rather than defining constants
 enum DataSource {
   sharedprefs(0, "SharedPrefs"),
   sqlite(1, "SQLite DB"),
   hive(2, "In Memory"),
-  firebase(2, "FireBase");
+  firebase(3, "FireBase");
 
   final int num;
   final String str;
@@ -51,6 +70,63 @@ enum DataSource {
 class _MyHomePageState extends State<MyHomePage> {
   int _count = 0; // count variable
   int _dataSource = 0; // Default data source
+  bool _isChecking = false; // connectivity to fbase
+
+  // Check if device can reach Firebase specifically
+  Future<bool> _checkFirebaseConnection() async {
+    bool ret;
+    try {
+      // Check if default app is actually initialized first
+      if (Firebase.apps.isEmpty) {
+        print("Firebase is not initialized yet!");
+        ret = false;
+      }
+
+      await FirebaseFirestore.instance
+          .collection('_ping')
+          .limit(1)
+          .get(const GetOptions(source: Source.server))
+          .timeout(const Duration(seconds: 10));
+
+      ret = true;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return true; // Server responded
+      ret = false;
+    } catch (e) {
+      // Catches web JS/DDC interop exceptions safely
+      print("Firebase check failed with error: $e");
+      ret = false;
+    }
+    setState(() =>
+        _isChecking = ret); //We notify the framework as this var is used in UI
+    return ret;
+  }
+
+  Future<void> _verifyFullConnectivity() async {
+    setState(() => _isChecking = true);
+
+    // Check basic device network connection
+    final connectivityResults = await Connectivity().checkConnectivity();
+    final bool hasDeviceNetwork =
+        !connectivityResults.contains(ConnectivityResult.none);
+
+    if (!hasDeviceNetwork) {
+      print("No network connection on device.");
+      setState(() => _isChecking = false);
+      return;
+    }
+
+    // Check actual connection to Firebase
+    final bool canReachFirebase = await _checkFirebaseConnection();
+
+    if (canReachFirebase) {
+      print("Successfully connected to Firebase!");
+    } else {
+      print("Network connected, but Firebase is unreachable.");
+    }
+
+    setState(() => _isChecking = false);
+  }
 
   // Called when widget is created (before UI build)
   @override
@@ -89,6 +165,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _loadCounter(int ii) async {
+    print("_loadCounter $ii");
     if (ii == 0) {
       // Load stored count from Shared Prefs
       final prefs = await SharedPreferences.getInstance();
@@ -109,8 +186,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _count = c ?? 0;
       setState(() => _count);
     } else if (ii == 3) {
-      // Read from Firebase
-      //TODO
+      print("NYI..");
     } else {
       print('Warn:Must not reach 1!');
     }
@@ -134,23 +210,52 @@ class _MyHomePageState extends State<MyHomePage> {
       final box = await Hive.openBox<int>('counterHV');
       box.put('counter', _count);
     } else if (_dataSource == 3) {
-      //TODO
+      // Connection to Firebase
+      print("Verifying connectivyt with fbase 1");
+      await _verifyFullConnectivity();
+      print("Setting the count...");
+      await setCount(_count);
     } else {
       print('Warn:Must not reach 2!');
     }
   }
 
-  // Change data source (menu action)
-  void _changeDataSource(String newSource) {
-    setState(() {
-      _dataSource = int.parse(newSource);
-    });
-    // a temporary message
+  //Update the count in Firestore
+  Future<void> setCount(int num) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('PersistenceDemoTable')
+          .doc('Config') // document ID
+          .set({
+        'id': 'count',
+        'value': num.toString(),
+      });
+      print('Firestore updated successfully!');
+    } catch (e) {
+      print('Failed to set data: $e');
+    }
+  }
+
+  // A temporary message
+  void snackMsg(String txt, String var1) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Data source changed to $_dataSource")),
+      SnackBar(content: Text(txt + var1)),
     );
   }
 
+  // Change data source (menu action)
+  void _changeDataSource(String newSource) {
+    var t = int.parse(newSource);
+    setState(() {
+      //do minimal work inside set state
+      _dataSource = t >= 0 && t < 4 ? t : 0;
+    });
+    String s = "Data source changed to ";
+    snackMsg(s, _dataSource.toString());
+    print(s + _dataSource.toString());
+  }
+
+  //This is t description of app UI
   // Build the UI (re-runs every time setState is called)
   @override
   Widget build(BuildContext context) {
@@ -199,6 +304,8 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),
+      bottomSheet:
+          Text("Firebase state ${_isChecking ? "connecting" : "idle"}"),
     );
   }
 }
