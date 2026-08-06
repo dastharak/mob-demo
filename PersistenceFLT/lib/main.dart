@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+//import 'package:path/path.dart' as pth; unused and conflicts with BuildContext context use an alias if needed
 import 'package:shared_preferences/shared_preferences.dart';
 import 'sqlite.dart' as db;
 import 'package:hive_flutter/hive_flutter.dart';
@@ -304,8 +305,10 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ),
-      bottomSheet:
-          Text("Firebase state ${_isChecking ? "connecting" : "idle"}"),
+      bottomSheet: Text(
+        "Firebase state ${_isChecking ? "connecting" : "idle"}",
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
     );
   }
 }
